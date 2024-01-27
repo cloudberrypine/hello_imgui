@@ -71,7 +71,7 @@ function(_him_do_build_imgui)
     else()
         add_library(imgui ${imgui_sources})
     endif()
-    target_include_directories(imgui PUBLIC ${HELLOIMGUI_IMGUI_SOURCE_DIR})
+    target_include_directories(imgui PUBLIC ${HELLOIMGUI_IMGUI_SOURCE_DIR} ${HELLOIMGUI_IMGUI_SOURCE_DIR}/misc/cpp ${HELLOIMGUI_IMGUI_SOURCE_DIR}/../../..)
 
     if (MSVC)
         hello_imgui_msvc_target_set_folder(imgui ${HELLOIMGUI_SOLUTIONFOLDER}/external)
