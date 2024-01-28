@@ -79,7 +79,7 @@ endfunction()
 
 
 function(_hello_imgui_emscripten_target_compile_options app_name)
-    target_link_options(${app_name} PRIVATE -sUSE_SDL=2 -sASSERTIONS -sALLOW_MEMORY_GROWTH -sEXPORTED_FUNCTIONS=["_main","_malloc"] -sEXTRA_EXPORTED_RUNTIME_METHODS=["ccall"] -O3)
+    target_link_options(${app_name} PRIVATE -sUSE_SDL=2 -sASSERTIONS -sALLOW_MEMORY_GROWTH -sEXPORTED_FUNCTIONS=["_main","_malloc","_setLanguageIndex"] -sEXPORTED_RUNTIME_METHODS=["ccall","cwrap"] -O3 -gseparate-dwarf="dwarf.debug.wasm")
     if (NOT HELLOIMGUI_EMSCRIPTEN_PTHREAD OR HELLOIMGUI_EMSCRIPTEN_PTHREAD_ALLOW_MEMORY_GROWTH)
         target_link_options(${app_name} PRIVATE -sALLOW_MEMORY_GROWTH)
     endif()
