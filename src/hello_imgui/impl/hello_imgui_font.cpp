@@ -37,14 +37,20 @@ namespace ImGui_SensibleFont
 
 */
 
+    static ImVector<ImVector<ImWchar>> all_glyph_ranges; // This is kept alive, until the app exits. However, it is small.
+
+    void ClearStaticGlyphRanges()
+    {
+        all_glyph_ranges.clear();
+    }
+
     static void StoreStaticGlyphRange(ImFontConfig* font_cfg, const ImVector<ImWchar> & glyph_ranges = {})
     {
         // *Static* storage for pointers that will be used by ImGui::GetIO().Fonts->AddFontFromMemoryTTF, and which are required to persist until the Font Atlas is built, which happens much later after calling AddFontFromXXX
         //
         //                  *Open question: should the storage use "static" or "thread_local"?*
         //
-        static ImVector<ImVector<ImWchar>> all_glyph_ranges; // This is kept alive, until the app exits. However, it is small.
-        constexpr int max_size = 100;  // Arbitrary limit: if you load more than 100 fonts, you may want to increase this number
+        constexpr int max_size = 1000;  // Arbitrary limit: if you load more than 1000 fonts, you may want to increase this number
         bool first_time = all_glyph_ranges.Capacity == 0;
 
         if (first_time)

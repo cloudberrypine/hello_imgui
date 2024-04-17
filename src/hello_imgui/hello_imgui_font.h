@@ -4,10 +4,13 @@
 #include <vector>
 #include <array>
 
+
+namespace ImGui_SensibleFont {
+void ClearStaticGlyphRanges();
+}
 namespace HelloImGui
 {
     using ImWcharPair = std::array<ImWchar, 2>;
-
     // @@md#Fonts
     //
     // When loading fonts, use HelloImGui::LoadFont(fontFilename, fontSize, fontLoadingParams)
