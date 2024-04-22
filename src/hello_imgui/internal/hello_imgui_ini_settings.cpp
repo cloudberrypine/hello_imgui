@@ -422,7 +422,11 @@ namespace HelloImGui
             if (iniParts.HasIniPart(userPrefName))
             {
                 std::string contentWithNewLine = iniParts.GetIniPart(userPrefName);
-                return contentWithNewLine.substr(0, contentWithNewLine.size() - 1);
+                while (contentWithNewLine.size() > 0 && contentWithNewLine.back() == '\n')
+                {
+                    contentWithNewLine.pop_back();
+                }
+                return contentWithNewLine;
             }
             else
                 return "";
