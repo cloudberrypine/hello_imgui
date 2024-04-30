@@ -123,6 +123,8 @@ namespace HelloImGui { namespace BackendApi
 
         glfwGetWindowSize(window, &windowSize[0], &windowSize[1]);
         glfwGetWindowPos(window, &windowPosition[0], &windowPosition[1]);
+        glfwMakeContextCurrent(window);
+        glfwSwapInterval(1);
 
         // printf("Final window size: %ix%i\n", windowSize[0], windowSize[1]);
         // printf("Final window position: %ix%i\n", windowPosition[0], windowPosition[1]);
