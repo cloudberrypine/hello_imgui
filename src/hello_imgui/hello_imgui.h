@@ -144,6 +144,9 @@ void        SaveUserPref(const std::string& userPrefName, const std::string& use
 std::string LoadUserPref(const std::string& userPrefName);
 // @@md
 
+// ============================== Window Utils =============================
+
+void *GetWindowPointer();
 
 // ============================== Menus defaults =============================
 

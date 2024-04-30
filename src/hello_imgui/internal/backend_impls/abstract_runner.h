@@ -53,6 +53,7 @@ class AbstractRunner
     void        SaveUserPref(const std::string& userPrefName, const std::string& userPrefContent);
     std::string LoadUserPref(const std::string& userPrefName);
 
+    BackendApi::WindowPointer GetWindowPointer() { return mWindow; }
 protected:
     friend std::string GlslVersion();
 
@@ -111,6 +112,7 @@ private:
     void LayoutSettings_HandleChanges();
     void LayoutSettings_Load();
     void LayoutSettings_Save();
+
 
 protected:
     BackendApi::WindowPointer mWindow = nullptr;

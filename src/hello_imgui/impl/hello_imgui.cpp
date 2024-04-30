@@ -170,6 +170,8 @@ std::string LoadUserPref(const std::string& userPrefName)
     return gLastRunner->LoadUserPref(userPrefName);
 }
 
+void *GetWindowPointer() { return gLastRunner->GetWindowPointer(); }
+
 
 void ShowViewMenu(RunnerParams & runnerParams)
 {
