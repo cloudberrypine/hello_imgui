@@ -126,6 +126,8 @@ struct RunnerParams
     // imgui window params (use docking, showMenuBar, ProvideFullScreenWindow, etc.)
     ImGuiWindowParams imGuiWindowParams;
 
+    float uiScale = 1.0f;
+
 
     // --------------- Docking -------------------
 

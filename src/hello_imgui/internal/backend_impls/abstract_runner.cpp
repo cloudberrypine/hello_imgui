@@ -251,13 +251,13 @@ void AbstractRunner::HandleDpiOnSecondFrame()
     MakeWindowSizeRelativeTo96Ppi_IfRequired();
 #endif
     
-    // High DPI handling on windows & linux
+    // High DPI handling on windows & linux & macOS if uiScale is not 1.0f
     {
         float dpiScale = DpiWindowSizeFactor();
-        if ( dpiScale > 1.f)
+        if ( dpiScale != 1.0f || params.uiScale != 1.0f)
         {
             ImGuiStyle& style = ImGui::GetStyle();
-            style.ScaleAllSizes(dpiScale);
+            style.ScaleAllSizes(dpiScale * params.uiScale);
         }
     }
 }
