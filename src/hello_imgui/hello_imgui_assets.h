@@ -64,6 +64,13 @@ void FreeAssetFileData(AssetFileData * assetFileData);
 std::string AssetFileFullPath(const std::string& assetRelativeFilename,
                               bool assertIfNotFound = true);
 
+struct AssetFolderWithDesignation
+{
+    std::string folder;
+    std::string designation;
+};
+std::vector<AssetFolderWithDesignation> computePossibleAssetsFolders();
+
 // Returns true if this asset file exists
 bool AssetExists(const std::string& assetRelativeFilename);
 
