@@ -5,10 +5,10 @@
 
 
 #define HIMG_ERROR(msg) \
-    { \
-        std::cerr << "HelloImGui ERROR: " << msg << "\t\t at " << __FILE__ << ":" << __LINE__ << "\n"; \
+    do {                   \
+        SPDLOG_CRITICAL("HelloImGui ERROR: {:s}", msg); \
         IM_ASSERT(false); \
-    }
+    } while(0)
 
 #ifdef __EMSCRIPTEN__
 // Log utilities for emscripten, where the best debug tool is printf
