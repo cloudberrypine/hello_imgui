@@ -52,36 +52,49 @@
     #include <windows.h>
     #include <ShlObj.h>
     #include <tchar.h>
+    #include <codecvt>
 
     static std::string GetTempPath()
     {
-        TCHAR tempPath[MAX_PATH];
-        if (GetTempPath(MAX_PATH, tempPath) > 0)
-            return std::string(tempPath);
+        wchar_t tempPath[MAX_PATH];
+        if (GetTempPathW(MAX_PATH, tempPath) > 0) {
+            static std::wstring_convert<std::codecvt_utf8_utf16<wchar_t> > converter;
+            std::string shortFilePath = converter.to_bytes(tempPath);
+            return shortFilePath;
+        }
         return "";
     }
 
     static std::string GetAppUserConfigFolder()
     {
-        TCHAR appDataPath[MAX_PATH];
-        if (SHGetFolderPath(NULL, CSIDL_APPDATA, NULL, SHGFP_TYPE_CURRENT, appDataPath) == S_OK)
-            return std::string(appDataPath);
+        wchar_t appDataPath[MAX_PATH];
+        if (SHGetFolderPathW(NULL, CSIDL_APPDATA, NULL, SHGFP_TYPE_CURRENT, appDataPath) == S_OK) {
+            static std::wstring_convert<std::codecvt_utf8_utf16<wchar_t> > converter;
+            std::string shortFilePath = converter.to_bytes(appDataPath);
+            return shortFilePath;
+        }
         return "";
     }
 
     static std::string GetDocumentsPath()
     {
-        TCHAR documentsPath[MAX_PATH];
-        if (SHGetFolderPath(NULL, CSIDL_MYDOCUMENTS, NULL, SHGFP_TYPE_CURRENT, documentsPath) == S_OK)
-            return std::string(documentsPath);
+        wchar_t documentsPath[MAX_PATH];
+        if (SHGetFolderPathW(NULL, CSIDL_MYDOCUMENTS, NULL, SHGFP_TYPE_CURRENT, documentsPath) == S_OK) {
+            static std::wstring_convert<std::codecvt_utf8_utf16<wchar_t> > converter;
+            std::string shortFilePath = converter.to_bytes(documentsPath);
+            return shortFilePath;
+        }
         return "";
     }
 
     static std::string GetHomePath()
     {
-        TCHAR homePath[MAX_PATH];
-        if (SHGetFolderPath(NULL, CSIDL_PROFILE, NULL, SHGFP_TYPE_CURRENT, homePath) == S_OK)
-            return std::string(homePath);
+        wchar_t homePath[MAX_PATH];
+        if (SHGetFolderPathW(NULL, CSIDL_PROFILE, NULL, SHGFP_TYPE_CURRENT, homePath) == S_OK) {
+            static std::wstring_convert<std::codecvt_utf8_utf16<wchar_t> > converter;
+            std::string shortFilePath = converter.to_bytes(homePath);
+            return shortFilePath;
+        }
         return "";
     }
 

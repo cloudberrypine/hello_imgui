@@ -57,7 +57,7 @@ namespace HelloImGui
 
         auto mkdirToFilename = [](const std::string& filename) -> bool
         {
-            std::filesystem::path p(filename);
+            std::filesystem::path p(std::filesystem::u8path(filename));
             std::filesystem::path dir = p.parent_path();
             if (dir.empty())
                 return true;
