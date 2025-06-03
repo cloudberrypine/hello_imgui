@@ -138,7 +138,11 @@ std::vector<AssetFolderWithDesignation> computePossibleAssetsFolders()
 
     // For apple bundle, search at the bundle resources folder
     #ifdef HELLOIMGUI_INSIDE_APPLE_BUNDLE
+#if defined(IOS)
+    r.push_back({GetBundlePath() + "/" + gAssetsSubfolderFolderName, "AppleAppBundle/assets"});
+#else
     r.push_back({GetBundlePath() + "/Contents/Resources/" + gAssetsSubfolderFolderName, "AppleAppBundle/Contents/Resources/assets"});
+#endif
     #endif
 
     // Search inside a subfolder of the current working directory
