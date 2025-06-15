@@ -694,37 +694,43 @@ void AbstractRunner::CreateFramesAndRender()
         }
         #endif
     }
+    
+    if (!mPaused) {
+        
+        // CustomBackground is a user callback
+        if (params.callbacks.CustomBackground)
+            params.callbacks.CustomBackground();
+        else
+            mRenderingBackendCallbacks->Impl_Frame_3D_ClearColor(params.imGuiWindowParams.backgroundColor);
+        
+        // iii/ At the end of the second frame, we measure the size of the widgets and use it as the application window size, if the user required auto size
+        // ==> Note: RenderGui() may measure the size of the window and resize it if mIdxFrame==1
+        // RenderGui may call many user callbacks, so it should not be inside SCOPED_RELEASE_GIL_ON_MAIN_THREAD
+        RenderGui();
+        
+        if (params.callbacks.BeforeImGuiRender)
+            params.callbacks.BeforeImGuiRender();
+        
+        if (true_gil) // Render and Swap
+        { // SCOPED_RELEASE_GIL_ON_MAIN_THREAD start
+            SCOPED_RELEASE_GIL_ON_MAIN_THREAD;
+            
+            ImGui::Render();
+            mRenderingBackendCallbacks->Impl_RenderDrawData_To_3D();
+            
+            if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+                Impl_UpdateAndRenderAdditionalPlatformWindows();
+            
+            Impl_SwapBuffers();
+        } // SCOPED_RELEASE_GIL_ON_MAIN_THREAD end
+        
+        // AfterSwap is a user callback, so it should not be inside SCOPED_RELEASE_GIL_ON_MAIN_THREAD
+        if (params.callbacks.AfterSwap)
+            params.callbacks.AfterSwap();
+    } else {
+        ImGui::EndFrame();
+    }
 
-    // CustomBackground is a user callback
-    if (params.callbacks.CustomBackground)
-        params.callbacks.CustomBackground();
-    else
-        mRenderingBackendCallbacks->Impl_Frame_3D_ClearColor(params.imGuiWindowParams.backgroundColor);
-
-    // iii/ At the end of the second frame, we measure the size of the widgets and use it as the application window size, if the user required auto size
-    // ==> Note: RenderGui() may measure the size of the window and resize it if mIdxFrame==1
-    // RenderGui may call many user callbacks, so it should not be inside SCOPED_RELEASE_GIL_ON_MAIN_THREAD
-    RenderGui();
-
-    if (params.callbacks.BeforeImGuiRender)
-        params.callbacks.BeforeImGuiRender();
-
-    if (true_gil) // Render and Swap
-    { // SCOPED_RELEASE_GIL_ON_MAIN_THREAD start
-        SCOPED_RELEASE_GIL_ON_MAIN_THREAD;
-
-        ImGui::Render();
-        mRenderingBackendCallbacks->Impl_RenderDrawData_To_3D();
-
-        if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-            Impl_UpdateAndRenderAdditionalPlatformWindows();
-
-        Impl_SwapBuffers();
-    } // SCOPED_RELEASE_GIL_ON_MAIN_THREAD end
-
-    // AfterSwap is a user callback, so it should not be inside SCOPED_RELEASE_GIL_ON_MAIN_THREAD
-    if (params.callbacks.AfterSwap)
-        params.callbacks.AfterSwap();
 
     #ifdef HELLOIMGUI_WITH_TEST_ENGINE
     // TestEngineCallbacks::PostSwap() handles the GIL in its own way,
@@ -817,6 +823,7 @@ void AbstractRunner::OnPause()
     if (params.callbacks.mobileCallbacks.OnPause)
         params.callbacks.mobileCallbacks.OnPause();
 #endif
+    mPaused = true;
 }
 
 void AbstractRunner::OnResume()
@@ -825,6 +832,7 @@ void AbstractRunner::OnResume()
     if (params.callbacks.mobileCallbacks.OnResume)
         params.callbacks.mobileCallbacks.OnResume();
 #endif
+    mPaused = false;
 }
 
 void AbstractRunner::OnDestroy()

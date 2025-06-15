@@ -121,6 +121,7 @@ private:
     std::unique_ptr<WindowGeometryHelper> mGeometryHelper;
     bool mPotentialFontLoadingError = false;
     int mIdxFrame = 0;
+    bool mPaused = false;
     bool mWasWindowAutoResizedOnPreviousFrame = false;
 
 };
