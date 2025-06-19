@@ -580,7 +580,7 @@ function(_him_fetch_sdl_if_needed)
 
     # Always fetch SDL for iOS and Android
     if (HELLOIMGUI_USE_SDL_OPENGL3 AND (IOS OR ANDROID))
-        set(shall_fetch_sdl ON)
+        set(shall_fetch_sdl OFF)
     endif()
 
     # Fetch SDL if:
@@ -590,7 +590,7 @@ function(_him_fetch_sdl_if_needed)
     if (HELLOIMGUI_DOWNLOAD_SDL_IF_NEEDED AND NOT TARGET sdl AND NOT EMSCRIPTEN)
         find_package(SDL2 QUIET)
         if (NOT SDL2_FOUND)
-            set(shall_fetch_sdl ON)
+            set(shall_fetch_sdl OFF)
         endif()
     endif()
 
@@ -604,6 +604,7 @@ function(_him_fetch_sdl_if_needed)
         endif()
     else()
         set(HELLOIMGUI_SDL_SELECTED_INFO "Use system Library" CACHE INTERNAL "" FORCE)
+        _him_prepare_android_sdl_symlink()
     endif()
 endfunction()
 
@@ -629,11 +630,11 @@ endfunction()
 
 function(_him_prepare_android_sdl_symlink)
     # We now have SDL in _deps/sdl-src
-    set(sdl_location ${CMAKE_BINARY_DIR}/_deps/sdl-src)
+    set(sdl_location ${HELLOIMGUI_BASEPATH}/../SDL)
     # We need to communicate this location to the function apkCMake_makeSymLinks()
     # so that it can create the symlinks in the right place:
     # it will use the variable apkCMake_sdl_symlink_target
-    set(apkCMake_sdl_symlink_target ${CMAKE_BINARY_DIR}/_deps/sdl-src CACHE STRING "" FORCE)
+    set(apkCMake_sdl_symlink_target ${HELLOIMGUI_BASEPATH}/../SDL CACHE STRING "" FORCE)
 endfunction()
 
 function(_him_link_sdl target)
