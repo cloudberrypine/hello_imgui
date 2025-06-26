@@ -578,9 +578,9 @@ endfunction()
 function(_him_fetch_sdl_if_needed)
     set(shall_fetch_sdl OFF)
 
-    # Always fetch SDL for iOS and Android
-    if (HELLOIMGUI_USE_SDL_OPENGL3 AND (IOS OR ANDROID))
-        set(shall_fetch_sdl OFF)
+    # Always fetch SDL for non-android
+    if (HELLOIMGUI_USE_SDL_OPENGL3 AND NOT ANDROID)
+        set(shall_fetch_sdl ON)
     endif()
 
     # Fetch SDL if:
@@ -589,8 +589,8 @@ function(_him_fetch_sdl_if_needed)
     # and HELLOIMGUI_USE_SDL_SYSTEM_LIB is OFF
     if (HELLOIMGUI_DOWNLOAD_SDL_IF_NEEDED AND NOT TARGET sdl AND NOT EMSCRIPTEN)
         find_package(SDL2 QUIET)
-        if (NOT SDL2_FOUND)
-            set(shall_fetch_sdl OFF)
+        if (NOT SDL2_FOUND AND NOT ANDROID)
+            set(shall_fetch_sdl ON)
         endif()
     endif()
 
@@ -604,7 +604,9 @@ function(_him_fetch_sdl_if_needed)
         endif()
     else()
         set(HELLOIMGUI_SDL_SELECTED_INFO "Use system Library" CACHE INTERNAL "" FORCE)
-        _him_prepare_android_sdl_symlink()
+        if (ANDROID)
+            _him_prepare_android_sdl_symlink()
+        endif()
     endif()
 endfunction()
 
