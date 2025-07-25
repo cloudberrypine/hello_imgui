@@ -2,7 +2,7 @@
 #include "opengl_screenshot.h"
 #include "imgui.h"
 #include "hello_imgui/hello_imgui_include_opengl.h"
-#include "hello_imgui/internal/pnm.h"
+//#include "hello_imgui/internal/pnm.h"
 
 #ifdef __linux__
 #include <unistd.h>
@@ -44,6 +44,7 @@ namespace HelloImGui
 
         if (false)
         {
+            /*
             // Save as ppm
             pnm::image<pnm::rgb_pixel> ppm(r.width, r.height);
             for(std::size_t y=0; y<ppm.y_size(); ++y)
@@ -55,6 +56,7 @@ namespace HelloImGui
                 }
             }
             pnm::write("/tmp/out.ppm", ppm, pnm::format::binary);
+             */
         }
 
         return r;
