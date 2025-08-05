@@ -169,6 +169,9 @@ public class PolyPine extends SDLActivity
                  }
              } else if (billingResult.getResponseCode() == BillingClient.BillingResponseCode.USER_CANCELED) {
                  Log.d(TAG, "User canceled the purchase.");
+             } else if (billingResult.getResponseCode() == BillingClient.BillingResponseCode.ITEM_ALREADY_OWNED) {
+                 isFullGameUnlocked.set(true);
+                 setIsGameUnlockedToTrue();
              } else {
                  fullGamePurchaseErrorMessage.set("Error: " + billingResult.getDebugMessage());
                  Log.e(TAG, "Purchase failed with error: " + billingResult.getDebugMessage());
@@ -185,12 +188,14 @@ public class PolyPine extends SDLActivity
                      billingClient.acknowledgePurchase(acknowledgePurchaseParams, billingResult -> {
                          if (billingResult.getResponseCode() == BillingClient.BillingResponseCode.OK) {
                              isFullGameUnlocked.set(true);
+                             setIsGameUnlockedToTrue();
                          } else {
                              Log.e(TAG, "Error acknowledging purchase: " + billingResult.getDebugMessage());
                          }
                      });
                  } else {
                      isFullGameUnlocked.set(true);
+                     setIsGameUnlockedToTrue();
                  }
              } else if (purchase.getPurchaseState() == Purchase.PurchaseState.PENDING) {
                  // Handle pending transactions if necessary
@@ -266,6 +271,7 @@ public class PolyPine extends SDLActivity
         };
     }
 
+    public static native void setIsGameUnlockedToTrue();
 }
 
 /*
