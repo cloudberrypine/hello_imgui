@@ -13,12 +13,12 @@ android {
         namespace "@apkCMake_applicationIdUrlPart@.@apkCMake_applicationIdNamePart@"
     }
 
-    compileSdkVersion 34
+    compileSdkVersion 35
 
 
     defaultConfig {
         minSdkVersion 21
-        targetSdkVersion 34
+        targetSdkVersion 35
 
         versionCode @apkCMake_versionCode@
         versionName "@apkCMake_versionName@"
