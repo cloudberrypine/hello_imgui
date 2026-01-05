@@ -362,6 +362,7 @@ function(_him_do_build_imgui)
         $<BUILD_INTERFACE:${HELLOIMGUI_IMGUI_SOURCE_DIR}/backends>
         $<BUILD_INTERFACE:${HELLOIMGUI_IMGUI_SOURCE_DIR}/misc/cpp>
         $<BUILD_INTERFACE:${HELLOIMGUI_IMGUI_SOURCE_DIR}/misc/freetype>
+        $<BUILD_INTERFACE:${HELLOIMGUI_IMGUI_SOURCE_DIR}/../../../glm>
     )
     him_add_installable_dependency(imgui)
     hello_imgui_msvc_target_set_folder(imgui ${HELLOIMGUI_SOLUTIONFOLDER}/external)
