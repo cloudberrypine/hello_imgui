@@ -153,7 +153,10 @@ namespace HelloImGui
             icons[0].height = height;
             icons[0].pixels = image; // GLFWImage expects an array of pixels (unsigned char *)
 
+            // glfwSetWindowIcon doesn't work on mac
+#ifndef __APPLE__
             glfwSetWindowIcon((GLFWwindow*)mWindow, 1, icons);
+#endif
 
             stbi_image_free(image);
         }
