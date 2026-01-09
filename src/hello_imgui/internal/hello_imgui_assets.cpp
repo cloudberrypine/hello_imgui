@@ -127,12 +127,6 @@ void SetAssetsFolder(const std::string& folder)
     SetAssetsFolder(folder.c_str());
 }
 
-struct AssetFolderWithDesignation
-{
-    std::string folder;
-    std::string designation;
-};
-
 std::vector<AssetFolderWithDesignation> computePossibleAssetsFolders()
 {
     std::vector<AssetFolderWithDesignation> r;

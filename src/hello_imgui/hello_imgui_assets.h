@@ -97,4 +97,13 @@ void overrideAssetsFolder(const char* folder); // synonym of SetAssetsFolder
 
 extern std::string gAssetsSubfolderFolderName;  // "assets" by default
 
+
+struct AssetFolderWithDesignation
+{
+    std::string folder;
+    std::string designation;
+};
+
+std::vector<AssetFolderWithDesignation> computePossibleAssetsFolders();
+
 } // namespace HelloImGui
