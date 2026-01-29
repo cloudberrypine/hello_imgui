@@ -120,6 +120,7 @@ function(_him_add_freetype_to_imgui)
             if(IOS)
                 set(FT_DISABLE_HARFBUZZ ON CACHE BOOL "" FORCE)
                 set(FT_DISABLE_BROTLI ON CACHE BOOL "" FORCE)
+                set(FT_DISABLE_PNG ON CACHE BOOL "" FORCE)
             endif()
             FetchContent_Declare(
                 freetype

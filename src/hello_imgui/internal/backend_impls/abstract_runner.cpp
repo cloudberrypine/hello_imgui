@@ -192,6 +192,12 @@ float AbstractRunner::ImGuiDefaultFontGlobalScale()
     // while screen renders at 2x scale.
     fontSizeIncreaseFactor = (float) NSScreen.mainScreen.backingScaleFactor;
 #endif
+#if TARGET_OS_IPHONE
+    // Crisp fonts on iOS: same issue as macOS.
+    // iOS uses point-based coordinates while the framebuffer is at native retina resolution (2x or 3x).
+    // DisplayFramebufferScale is already set before this function is called.
+    fontSizeIncreaseFactor = ImGui::GetIO().DisplayFramebufferScale.x;
+#endif
 
     float defaultFontGlobalScale = 1.0f / fontSizeIncreaseFactor;
     return defaultFontGlobalScale;
