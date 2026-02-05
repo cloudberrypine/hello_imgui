@@ -120,6 +120,13 @@ public class PolyPine extends SDLActivity
                          List<ProductDetails.OneTimePurchaseOfferDetails> offerDetailsList = fullGameProductDetails.getOneTimePurchaseOfferDetailsList();
                          if (offerDetailsList != null && !offerDetailsList.isEmpty()) {
                              fullGameOfferDetails = offerDetailsList.get(0);
+                             for (ProductDetails.OneTimePurchaseOfferDetails offer : offerDetailsList) {
+                                 Log.i(TAG, "Found full game offer with price: " + offer.getPriceAmountMicros());
+                                 if (offer.getPriceAmountMicros() < fullGameOfferDetails.getPriceAmountMicros()) {
+                                     fullGameOfferDetails = offer;
+                                     Log.i(TAG, "Choosing it as the better offer");
+                                 }
+                             }
                              localizedFullGamePrice.set(fullGameOfferDetails.getFormattedPrice());
                          }
                      } else {
