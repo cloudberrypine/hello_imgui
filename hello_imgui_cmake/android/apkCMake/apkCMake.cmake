@@ -52,7 +52,7 @@ macro(apkCMake_fillAndroidWantedVersions)
     apkCMake_logVar(apkCMake_compileSdkVersion)
 
     if (NOT DEFINED apkCMake_minSdkVersion)
-        set(apkCMake_minSdkVersion 21)
+        set(apkCMake_minSdkVersion 23)
     endif()
     apkCMake_logVar(apkCMake_minSdkVersion)
 
