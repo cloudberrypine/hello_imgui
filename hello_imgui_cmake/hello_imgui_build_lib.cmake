@@ -217,6 +217,86 @@ function(him_back_describe_active_platform_backends out_description)
 endfunction()
 
 
+function(him_back_prune_unused_sources in_out_var)
+    set(sources ${${in_out_var}})
+    set(exclude_patterns
+        "/internal/backend_impls/deprecated/runner_qt\\.cpp$"
+    )
+
+    if(NOT WIN32)
+        list(APPEND exclude_patterns
+            "/internal/backend_impls/backend_window_helper/win32_dpi_awareness\\.cpp$")
+    endif()
+
+    if(NOT EMSCRIPTEN)
+        list(APPEND exclude_patterns
+            "/internal/backend_impls/runner_glfw3_emscripten\\.cpp$"
+            "/internal/backend_impls/runner_sdl_emscripten\\.cpp$")
+    endif()
+
+    if(HELLOIMGUI_HEADLESS OR NOT HELLOIMGUI_USE_GLFW3)
+        list(APPEND exclude_patterns
+            "/internal/backend_impls/runner_glfw3\\.cpp$"
+            "/internal/backend_impls/runner_glfw3_emscripten\\.cpp$"
+            "/internal/backend_impls/backend_window_helper/glfw_window_helper\\.cpp$"
+            "/internal/backend_impls/opengl_setup_helper/opengl_setup_glfw\\.cpp$")
+    endif()
+
+    if(HELLOIMGUI_HEADLESS OR NOT HELLOIMGUI_USE_SDL2)
+        list(APPEND exclude_patterns
+            "/internal/backend_impls/runner_sdl2\\.cpp$"
+            "/internal/backend_impls/runner_sdl_emscripten\\.cpp$"
+            "/internal/backend_impls/backend_window_helper/sdl_window_helper\\.cpp$"
+            "/internal/backend_impls/opengl_setup_helper/opengl_setup_sdl\\.cpp$")
+    endif()
+
+    if(HELLOIMGUI_HEADLESS OR NOT HELLOIMGUI_HAS_OPENGL3)
+        list(APPEND exclude_patterns
+            "/internal/backend_impls/rendering_opengl3\\.cpp$"
+            "/internal/backend_impls/opengl_setup_helper/opengl_setup_api\\.cpp$"
+            "/internal/backend_impls/opengl_setup_helper/opengl_screenshot\\.cpp$"
+            "/internal/image_opengl\\.cpp$")
+    endif()
+
+    if(HELLOIMGUI_HEADLESS OR NOT HELLOIMGUI_HAS_METAL)
+        list(APPEND exclude_patterns
+            "/internal/backend_impls/rendering_metal\\.mm$"
+            "/internal/backend_impls/rendering_metal_glfw\\.mm$"
+            "/internal/backend_impls/rendering_metal_sdl\\.mm$"
+            "/internal/image_metal\\.mm$")
+    endif()
+
+    if(HELLOIMGUI_HEADLESS OR NOT HELLOIMGUI_HAS_VULKAN)
+        list(APPEND exclude_patterns
+            "/internal/backend_impls/rendering_vulkan\\.cpp$"
+            "/internal/backend_impls/rendering_vulkan_glfw\\.cpp$"
+            "/internal/backend_impls/rendering_vulkan_sdl\\.cpp$"
+            "/internal/backend_impls/rendering_vulkan_setup\\.cpp$"
+            "/internal/image_vulkan\\.cpp$")
+    endif()
+
+    if(HELLOIMGUI_HEADLESS OR NOT HELLOIMGUI_HAS_DIRECTX11)
+        list(APPEND exclude_patterns
+            "/internal/backend_impls/rendering_dx11\\.cpp$"
+            "/internal/backend_impls/rendering_dx11_glfw\\.cpp$"
+            "/internal/backend_impls/rendering_dx11_sdl\\.cpp$"
+            "/internal/image_dx11\\.cpp$")
+    endif()
+
+    if(HELLOIMGUI_HEADLESS OR NOT HELLOIMGUI_HAS_DIRECTX12)
+        list(APPEND exclude_patterns
+            "/internal/backend_impls/rendering_dx12\\.cpp$"
+            "/internal/backend_impls/rendering_dx12_sdl\\.cpp$")
+    endif()
+
+    foreach(pattern IN LISTS exclude_patterns)
+        list(FILTER sources EXCLUDE REGEX "${pattern}")
+    endforeach()
+
+    set(${in_out_var} ${sources} PARENT_SCOPE)
+endfunction()
+
+
 ###################################################################################################
 # Add library and sources: API = him_add_hello_imgui
 ###################################################################################################
@@ -229,6 +309,7 @@ function(him_add_hello_imgui)
         file(GLOB_RECURSE sources_mm ${CMAKE_CURRENT_LIST_DIR}/*.mm)
         set(sources ${sources} ${sources_mm})
     endif()
+    him_back_prune_unused_sources(sources)
     add_library(${HELLOIMGUI_TARGET} ${sources})
     if(APPLE AND NOT IOS)
         target_compile_definitions(${HELLOIMGUI_TARGET} PUBLIC HELLOIMGUI_MACOS)
