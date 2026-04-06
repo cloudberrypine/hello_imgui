@@ -601,7 +601,15 @@ function(_him_add_freetype_plutosvg_to_imgui)
     #     return()
     # endif()
 
-    # Option 2: download and compile plutosvg
+    # Option 2: use a pre-provided plutosvg target
+    if(TARGET plutosvg)
+        target_link_libraries(imgui PUBLIC plutosvg)
+        target_compile_definitions(imgui PUBLIC IMGUI_ENABLE_FREETYPE_PLUTOSVG)
+        set(HELLOIMGUI_FREETYPE_SELECTED_INFO "${HELLOIMGUI_FREETYPE_SELECTED_INFO} - use provided plutosvg" CACHE INTERNAL "" FORCE)
+        return()
+    endif()
+
+    # Option 3: download and compile plutosvg
     set(can_download_freetype (HELLOIMGUI_DOWNLOAD_FREETYPE_IF_NEEDED OR HELLOIMGUI_FREETYPE_STATIC))
     if (HELLOIMGUI_FETCH_FORBIDDEN OR NOT can_download_freetype)
         target_link_libraries(imgui PUBLIC plutosvg)
