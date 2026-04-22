@@ -59,78 +59,69 @@
         // UWP build
 
         #include <winrt/Windows.Storage.h>
-        #include <locale>
-        #include <codecvt>
+        #include "deps/nowide/convert.hpp"
 
         static std::string GetTempPath()
         {
             auto tempFolder = winrt::Windows::Storage::ApplicationData::Current().TemporaryFolder().Path();
-            std::wstring tempPathW(tempFolder.begin(), tempFolder.end());
-            std::wstring_convert<std::codecvt_utf8<wchar_t> > converter;
-            return converter.to_bytes(tempPathW);
+            return nowide::narrow(std::wstring(tempFolder.c_str()));
         }
 
         static std::string GetAppUserConfigFolder()
         {
             auto folder = winrt::Windows::Storage::ApplicationData::Current().RoamingFolder().Path();
-            std::wstring pathW(folder.begin(), folder.end());
-            std::wstring_convert<std::codecvt_utf8<wchar_t> > converter;
-            return converter.to_bytes(pathW);
+            return nowide::narrow(std::wstring(folder.c_str()));
         }
 
         static std::string GetDocumentsPath()
         {
             auto folder = winrt::Windows::Storage::KnownFolders::DocumentsLibrary().Path();
-            std::wstring pathW(folder.begin(), folder.end());
-            std::wstring_convert<std::codecvt_utf8<wchar_t> > converter;
-            return converter.to_bytes(pathW);
+            return nowide::narrow(std::wstring(folder.c_str()));
         }
 
         static std::string GetHomePath()
         {
             auto folder = winrt::Windows::Storage::ApplicationData::Current().LocalFolder().Path();
-            std::wstring pathW(folder.begin(), folder.end());
-            std::wstring_convert<std::codecvt_utf8<wchar_t> > converter;
-            return converter.to_bytes(pathW);
+            return nowide::narrow(std::wstring(folder.c_str()));
         }
 
     #else // IS_UWP
         // Standard windows build
         #include <Windows.h>
         #include <ShlObj.h>
-        #include <tchar.h>
+        #include "deps/nowide/convert.hpp"
 
         static std::string GetTempPath()
         {
             // Non-UWP build
-            TCHAR tempPath[MAX_PATH];
-            if (::GetTempPath(MAX_PATH, tempPath) > 0)
-                return std::string(tempPath);
+            wchar_t tempPath[MAX_PATH];
+            if (::GetTempPathW(MAX_PATH, tempPath) > 0)
+                return nowide::narrow(tempPath);
             return "";
         }
 
         static std::string GetAppUserConfigFolder()
         {
-            TCHAR appDataPath[MAX_PATH];
-            if (SHGetFolderPath(NULL, CSIDL_APPDATA, NULL, SHGFP_TYPE_CURRENT, appDataPath) == S_OK)
-                return std::string(appDataPath);
+            wchar_t appDataPath[MAX_PATH];
+            if (SHGetFolderPathW(NULL, CSIDL_APPDATA, NULL, SHGFP_TYPE_CURRENT, appDataPath) == S_OK)
+                return nowide::narrow(appDataPath);
             return "";
         }
 
         static std::string GetDocumentsPath()
         {
-            TCHAR documentsPath[MAX_PATH];
-            if (SHGetFolderPath(NULL, CSIDL_MYDOCUMENTS, NULL, SHGFP_TYPE_CURRENT, documentsPath) == S_OK)
-                return std::string(documentsPath);
+            wchar_t documentsPath[MAX_PATH];
+            if (SHGetFolderPathW(NULL, CSIDL_MYDOCUMENTS, NULL, SHGFP_TYPE_CURRENT, documentsPath) == S_OK)
+                return nowide::narrow(documentsPath);
             return "";
         }
 
         static std::string GetHomePath()
         {
             // Non-UWP build
-            TCHAR homePath[MAX_PATH];
-            if (SHGetFolderPath(NULL, CSIDL_PROFILE, NULL, SHGFP_TYPE_CURRENT, homePath) == S_OK)
-                return std::string(homePath);
+            wchar_t homePath[MAX_PATH];
+            if (SHGetFolderPathW(NULL, CSIDL_PROFILE, NULL, SHGFP_TYPE_CURRENT, homePath) == S_OK)
+                return nowide::narrow(homePath);
             return "";
         }
 

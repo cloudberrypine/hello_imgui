@@ -11,6 +11,7 @@
 #define INICPP_H_
 
 #include <algorithm>
+#include "deps/nowide/fstream.hpp"
 #include <fstream>
 #include <istream>
 #include <map>
@@ -692,7 +693,7 @@ namespace ini
           * @param fileName path to the file that should be loaded. */
         void load(const std::string &fileName)
         {
-            std::ifstream is(fileName.c_str());
+            nowide::ifstream is(fileName.c_str());
             decode(is);
         }
 
@@ -732,7 +733,7 @@ namespace ini
           * @param fileName path to the file where the data should be stored. */
         void save(const std::string &fileName) const
         {
-            std::ofstream os(fileName.c_str());
+            nowide::ofstream os(fileName.c_str());
             encode(os);
         }
     };

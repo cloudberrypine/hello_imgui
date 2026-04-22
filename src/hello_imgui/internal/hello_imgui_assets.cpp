@@ -14,6 +14,11 @@
 #endif
 
 #include "hello_imgui/hello_imgui_error.h"
+#include "deps/nowide/cstdio.hpp"
+#include "deps/nowide/convert.hpp"
+#include "deps/nowide/fstream.hpp"
+#include <algorithm>
+#include <filesystem>
 #include <fstream>
 #include <sstream>
 #include <vector>
@@ -40,39 +45,11 @@ static void ChdirToBundleResourcesFolder()
 namespace FileUtils
 {
 #ifdef _WIN32
-    std::wstring Utf8ToUtf16(const std::string& utf8Str)
+    std::filesystem::path Utf8PathToFilesystemPath(const std::string& utf8Path)
     {
-        if (utf8Str.empty())
-            return std::wstring();
-
-        // Calculate the required size for the wide string.
-        int requiredSize = MultiByteToWideChar(CP_UTF8, 0, utf8Str.c_str(), -1, nullptr, 0);
-        if (requiredSize == 0)
-            HIMG_ERROR("Failed to convert UTF-8 to UTF-16.");
-
-        std::wstring wideStr;
-        wideStr.resize(requiredSize);
-
-        // Perform the conversion.
-        if (!MultiByteToWideChar(CP_UTF8, 0, utf8Str.c_str(), -1, &wideStr[0], requiredSize))
-            HIMG_ERROR("Failed to convert UTF-8 to UTF-16.");
-
-        return wideStr;
-    }
-
-    bool IsRegularFile_Utf8ToUtf16(const std::string& filename)
-    {
-        std::wstring filename_u16 = Utf8ToUtf16(filename);
-
-        DWORD fileAttributes = GetFileAttributesW(filename_u16.c_str());
-        if (fileAttributes == INVALID_FILE_ATTRIBUTES)
-            return false;  // File doesn't exist or some other error
-
-        // Check if it's a regular file (and not a directory)
-        if (fileAttributes & FILE_ATTRIBUTE_DIRECTORY)
-            return false;  // It's a directory
-
-        return true;  // It's a regular file
+        std::string nativePath = utf8Path;
+        std::replace(nativePath.begin(), nativePath.end(), '/', '\\');
+        return std::filesystem::path(nowide::widen(nativePath));
     }
 #endif
 
@@ -80,9 +57,10 @@ namespace FileUtils
     bool IsRegularFile(const std::string& filename)
     {
 #ifdef _WIN32
-        return IsRegularFile_Utf8ToUtf16(filename);
+        std::error_code ec;
+        return std::filesystem::is_regular_file(Utf8PathToFilesystemPath(filename), ec);
 #else
-        FILE *f = fopen(filename.c_str(), "r");
+        FILE *f = nowide::fopen(filename.c_str(), "r");
         bool found = (f != NULL);
         if (f)
             fclose(f);
@@ -302,12 +280,7 @@ AssetFileData LoadAssetFileData_Impl(const char *assetPath)
 {
     AssetFileData r;
 
-#ifdef _WIN32
-    std::wstring wide_assetPath = FileUtils::Utf8ToUtf16(assetPath);
-    std::ifstream ifs(wide_assetPath.c_str(), std::ios::binary | std::ios::ate);
-#else
-    std::ifstream ifs(assetPath, std::ios::binary | std::ios::ate);
-#endif
+    nowide::ifstream ifs(assetPath, std::ios::binary | std::ios::ate);
     if (!ifs.good())
         return AssetFileData();
 

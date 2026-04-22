@@ -1,5 +1,6 @@
 #include "hello_imgui/internal/functional_utils.h"
 
+#include "deps/nowide/fstream.hpp"
 #include <string>
 #include <fstream>
 
@@ -37,7 +38,7 @@ namespace HelloImGui
         std::string read_text_file_or_empty(const std::string& path)
         {
             constexpr auto read_size = std::size_t(4096);
-            auto stream = std::ifstream(path);
+            auto stream = nowide::ifstream(path);
             stream.exceptions(std::ios_base::badbit);
 
             if (! stream)
@@ -53,7 +54,7 @@ namespace HelloImGui
 
         void write_text_file(const std::string& path, const std::string& content)
         {
-            auto stream = std::ofstream(path);
+            auto stream = nowide::ofstream(path);
             if (stream.good())
                 stream << content;
         }

@@ -1,9 +1,25 @@
 #include "hello_imgui/runner_params.h"
 
+#include "deps/nowide/convert.hpp"
+#include <algorithm>
 #include <filesystem>
 
 namespace HelloImGui
 {
+    namespace
+    {
+        std::filesystem::path Utf8PathToFilesystemPath(const std::string& utf8Path)
+        {
+#ifdef _WIN32
+            std::string nativePath = utf8Path;
+            std::replace(nativePath.begin(), nativePath.end(), '/', '\\');
+            return std::filesystem::path(nowide::widen(nativePath));
+#else
+            return std::filesystem::path(utf8Path);
+#endif
+        }
+    }
+
     RunnerParams SimpleRunnerParams::ToRunnerParams() const
     {
         auto& self = *this;
@@ -57,7 +73,7 @@ namespace HelloImGui
 
         auto mkdirToFilename = [](const std::string& filename) -> bool
         {
-            std::filesystem::path p(filename);
+            std::filesystem::path p = Utf8PathToFilesystemPath(filename);
             std::filesystem::path dir = p.parent_path();
 
             if (dir.empty())
@@ -88,10 +104,10 @@ namespace HelloImGui
         if (iniFullFilename.empty())
             return;
 
-        if (!std::filesystem::exists(iniFullFilename))
+        if (!std::filesystem::exists(Utf8PathToFilesystemPath(iniFullFilename)))
             return;
 
-        bool success = std::filesystem::remove(iniFullFilename);
+        bool success = std::filesystem::remove(Utf8PathToFilesystemPath(iniFullFilename));
         IM_ASSERT(success && "Failed to delete ini file %s");
     }
 
@@ -103,7 +119,7 @@ namespace HelloImGui
         if (iniFullFilename.empty())
             return false;
 
-        return std::filesystem::exists(iniFullFilename);
+        return std::filesystem::exists(Utf8PathToFilesystemPath(iniFullFilename));
     }
 
 }  // namespace HelloImGui
