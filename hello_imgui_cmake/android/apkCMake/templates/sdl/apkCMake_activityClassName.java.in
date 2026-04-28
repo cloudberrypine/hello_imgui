@@ -1,4 +1,4 @@
-package com.helloimgui.PolyPine;
+package com.cloudberrypine.PolyPine;
 
 /**
 * A sample wrapper class that just calls SDLActivity
@@ -141,10 +141,17 @@ public class PolyPine extends SDLActivity
                      QueryPurchasesParams.newBuilder().setProductType(BillingClient.ProductType.INAPP).build(),
                      (billingResult, purchases) -> {
                          if (billingResult.getResponseCode() == BillingClient.BillingResponseCode.OK) {
+                             boolean foundFullGame = false;
                              for (Purchase purchase : purchases) {
                                  if (purchase.getProducts().contains(FULL_GAME_PRODUCT_ID) && purchase.getPurchaseState() == Purchase.PurchaseState.PURCHASED) {
+                                     foundFullGame = true;
                                      handlePurchase(purchase);
                                  }
+                             }
+                             if (!foundFullGame && isFullGameUnlocked.get()) {
+                                 Log.i(TAG, "Full game entitlement no longer present; revoking (likely Play Pass lapse).");
+                                 isFullGameUnlocked.set(false);
+                                 setIsGameUnlockedToFalse();
                              }
                          }
                      }
@@ -246,6 +253,14 @@ public class PolyPine extends SDLActivity
         billingManager = new BillingManager(this, getContext());
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (billingManager != null) {
+            billingManager.queryPurchases();
+        }
+    }
+
     public void purchaseUnlockFullGame() {
         billingManager.purchaseUnlockFullGame();
     }
@@ -290,6 +305,7 @@ public class PolyPine extends SDLActivity
     }
 
     public static native void setIsGameUnlockedToTrue();
+    public static native void setIsGameUnlockedToFalse();
 }
 
 /*
