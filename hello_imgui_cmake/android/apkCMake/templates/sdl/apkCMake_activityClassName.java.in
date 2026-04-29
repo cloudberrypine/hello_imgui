@@ -15,7 +15,6 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.android.billingclient.api.AcknowledgePurchaseParams;
-import com.android.billingclient.api.AcknowledgePurchaseResponseListener;
 import com.android.billingclient.api.BillingClient;
 import com.android.billingclient.api.BillingClientStateListener;
 import com.android.billingclient.api.BillingFlowParams;
@@ -28,7 +27,6 @@ import com.android.billingclient.api.ProductDetails;
 import com.android.billingclient.api.ProductDetailsResponseListener;
 import com.android.billingclient.api.QueryProductDetailsResult;
 import com.android.billingclient.api.QueryPurchasesParams;
-import com.android.billingclient.api.PurchasesResponseListener;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -118,14 +116,19 @@ public class PolyPine extends SDLActivity
                          fullGameProductDetails = productDetailsList.get(0);
                          List<ProductDetails.OneTimePurchaseOfferDetails> offerDetailsList = fullGameProductDetails.getOneTimePurchaseOfferDetailsList();
                          if (offerDetailsList != null && !offerDetailsList.isEmpty()) {
+                             Log.i(TAG, "Received " + offerDetailsList.size() + " one-time purchase offer(s) for full game.");
                              fullGameOfferDetails = offerDetailsList.get(0);
-                             for (ProductDetails.OneTimePurchaseOfferDetails offer : offerDetailsList) {
-                                 Log.i(TAG, "Found full game offer with price: " + offer.getPriceAmountMicros());
+                             for (int i = 0; i < offerDetailsList.size(); i++) {
+                                 ProductDetails.OneTimePurchaseOfferDetails offer = offerDetailsList.get(i);
+                                 Log.i(TAG, "  Offer[" + i + "] priceMicros=" + offer.getPriceAmountMicros()
+                                         + " formatted=" + offer.getFormattedPrice()
+                                         + " token=" + offer.getOfferToken());
                                  if (offer.getPriceAmountMicros() < fullGameOfferDetails.getPriceAmountMicros()) {
                                      fullGameOfferDetails = offer;
-                                     Log.i(TAG, "Choosing it as the better offer");
                                  }
                              }
+                             Log.i(TAG, "Selected offer: priceMicros=" + fullGameOfferDetails.getPriceAmountMicros()
+                                     + " token=" + fullGameOfferDetails.getOfferToken());
                              localizedFullGamePrice.set(fullGameOfferDetails.getFormattedPrice());
                          }
                      } else {
