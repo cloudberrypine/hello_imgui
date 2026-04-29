@@ -32,6 +32,8 @@ import com.android.billingclient.api.PurchasesResponseListener;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -49,7 +51,12 @@ public class PolyPine extends SDLActivity
          private ProductDetails fullGameProductDetails;
          private ProductDetails.OneTimePurchaseOfferDetails fullGameOfferDetails;
          private static final String FULL_GAME_PRODUCT_ID = "com.cloudberrypine.polypine_full_game";
-         private long retryDelay = 2000L; // 2 seconds
+         // Tokens we've already started acknowledging — prevents duplicate
+         // acknowledgePurchase() calls when both onPurchasesUpdated and
+         // onResume->queryPurchases see the same purchase before the server has
+         // marked it as acknowledged (which would result in a "Server error,
+         // please try again" log line on the second call).
+         private final Set<String> acknowledgingTokens = ConcurrentHashMap.newKeySet();
 
          public BillingManager(Activity activity, Context context) {
              this.activity = activity;
@@ -66,6 +73,11 @@ public class PolyPine extends SDLActivity
          }
 
          void connectToGooglePlay() {
+             // The BillingClient was built with enableAutoServiceReconnection(), so it
+             // handles reconnection on its own. We don't queue manual retries here —
+             // doing so would race with the library's internal reconnect logic and
+             // cause "Billing client setup finished" to fire twice (and downstream
+             // queryPurchases() / handlePurchase() to run twice).
              billingClient.startConnection(new BillingClientStateListener() {
                  @Override
                  public void onBillingSetupFinished(@NonNull BillingResult billingResult) {
@@ -74,27 +86,14 @@ public class PolyPine extends SDLActivity
                          queryProductDetails();
                          queryPurchases();
                      } else {
-                         Log.e(TAG, "Billing client setup failed with response code: " + billingResult.getResponseCode() + ". Retrying...");
-                         retryBillingServiceConnection();
+                         Log.e(TAG, "Billing client setup failed with response code: " + billingResult.getResponseCode()
+                                 + ". Auto-reconnect will retry.");
                      }
                  }
 
                  @Override
                  public void onBillingServiceDisconnected() {
-                     Log.d(TAG, "Billing service disconnected. Retrying...");
-                     retryBillingServiceConnection();
-                 }
-             });
-         }
-
-         private void retryBillingServiceConnection() {
-             activity.runOnUiThread(() -> {
-                 try {
-                     Thread.sleep(retryDelay);
-                     connectToGooglePlay();
-                     retryDelay = Math.min(retryDelay * 2, 60000L); // Exponential backoff up to 1 minute
-                 } catch (InterruptedException e) {
-                     Log.e(TAG, "Thread interrupted while retrying billing service connection.", e);
+                     Log.d(TAG, "Billing service disconnected. Auto-reconnect will retry.");
                  }
              });
          }
@@ -140,6 +139,7 @@ public class PolyPine extends SDLActivity
              billingClient.queryPurchasesAsync(
                      QueryPurchasesParams.newBuilder().setProductType(BillingClient.ProductType.INAPP).build(),
                      (billingResult, purchases) -> {
+                         boolean wasRestoring = isPurchasingFullGame.getAndSet(false);
                          if (billingResult.getResponseCode() == BillingClient.BillingResponseCode.OK) {
                              boolean foundFullGame = false;
                              for (Purchase purchase : purchases) {
@@ -153,12 +153,20 @@ public class PolyPine extends SDLActivity
                                  isFullGameUnlocked.set(false);
                                  setIsGameUnlockedToFalse();
                              }
+                             if (wasRestoring && !foundFullGame) {
+                                 fullGamePurchaseErrorMessage.set("No previous purchase found on this account.");
+                             }
+                         } else if (wasRestoring) {
+                             fullGamePurchaseErrorMessage.set("Could not contact Google Play (code " + billingResult.getResponseCode() + ").");
+                             Log.e(TAG, "queryPurchases failed: " + billingResult.getDebugMessage());
                          }
                      }
              );
          }
 
          public void purchaseUnlockFullGame() {
+             Log.i(TAG, "purchaseUnlockFullGame() called. isFullGameUnlocked=" + isFullGameUnlocked.get()
+                     + " isPurchasingFullGame=" + isPurchasingFullGame.get());
              if (fullGameProductDetails != null && fullGameOfferDetails != null) {
                  isPurchasingFullGame.set(true);
                  fullGamePurchaseErrorMessage.set("");
@@ -172,7 +180,10 @@ public class PolyPine extends SDLActivity
                  BillingFlowParams billingFlowParams = BillingFlowParams.newBuilder()
                          .setProductDetailsParamsList(productDetailsParamsList)
                          .build();
-                 billingClient.launchBillingFlow(activity, billingFlowParams);
+                 Log.i(TAG, "About to call launchBillingFlow().");
+                 BillingResult flowResult = billingClient.launchBillingFlow(activity, billingFlowParams);
+                 Log.i(TAG, "launchBillingFlow() returned code=" + flowResult.getResponseCode()
+                         + " debug=" + flowResult.getDebugMessage());
              } else {
                  fullGamePurchaseErrorMessage.set("Product not found.");
                  Log.e(TAG, "Cannot initiate purchase, product details not loaded.");
@@ -205,22 +216,34 @@ public class PolyPine extends SDLActivity
 
          private void handlePurchase(Purchase purchase) {
              if (purchase.getPurchaseState() == Purchase.PurchaseState.PURCHASED) {
+                 // Grant entitlement immediately so the game UI updates the moment the
+                 // purchase succeeds; otherwise the user can re-tap "Buy" before the
+                 // acknowledge callback returns and Google Play will show an
+                 // "already owned" sheet.
+                 isFullGameUnlocked.set(true);
+                 setIsGameUnlockedToTrue();
                  if (!purchase.isAcknowledged()) {
+                     final String token = purchase.getPurchaseToken();
+                     // Only fire acknowledgePurchase once per token. onPurchasesUpdated
+                     // and queryPurchases (called from onResume) can both observe the
+                     // same purchase before its acknowledged-bit flips on Google's
+                     // server, so without this guard we'd send two acknowledge
+                     // requests and the second would fail with a server error.
+                     if (!acknowledgingTokens.add(token)) {
+                         Log.d(TAG, "Acknowledge already in flight for purchase token; skipping.");
+                         return;
+                     }
                      AcknowledgePurchaseParams acknowledgePurchaseParams =
                              AcknowledgePurchaseParams.newBuilder()
-                                     .setPurchaseToken(purchase.getPurchaseToken())
+                                     .setPurchaseToken(token)
                                      .build();
                      billingClient.acknowledgePurchase(acknowledgePurchaseParams, billingResult -> {
-                         if (billingResult.getResponseCode() == BillingClient.BillingResponseCode.OK) {
-                             isFullGameUnlocked.set(true);
-                             setIsGameUnlockedToTrue();
-                         } else {
+                         if (billingResult.getResponseCode() != BillingClient.BillingResponseCode.OK) {
                              Log.e(TAG, "Error acknowledging purchase: " + billingResult.getDebugMessage());
+                             // Allow a future retry on a real failure.
+                             acknowledgingTokens.remove(token);
                          }
                      });
-                 } else {
-                     isFullGameUnlocked.set(true);
-                     setIsGameUnlockedToTrue();
                  }
              } else if (purchase.getPurchaseState() == Purchase.PurchaseState.PENDING) {
                  // Handle pending transactions if necessary
