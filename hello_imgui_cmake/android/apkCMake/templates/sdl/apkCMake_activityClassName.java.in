@@ -4,6 +4,8 @@ package com.cloudberrypine.PolyPine;
 * A sample wrapper class that just calls SDLActivity
 */
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 
 import org.libsdl.app.SDLActivity;
 
@@ -46,8 +48,16 @@ public class PolyPine extends SDLActivity
          private final AtomicReference<String> localizedFullGamePrice = new AtomicReference<>("");
          private final AtomicReference<String> fullGamePurchaseErrorMessage = new AtomicReference<>("");
          private final AtomicBoolean isPurchasingFullGame = new AtomicBoolean(false);
-         private ProductDetails fullGameProductDetails;
-         private ProductDetails.OneTimePurchaseOfferDetails fullGameOfferDetails;
+         // volatile so that ensureProductDetailsLoaded() (called from onResume on
+         // the main thread) sees the latest value written from the billing
+         // library's response thread without an explicit memory barrier.
+         private volatile ProductDetails fullGameProductDetails;
+         private volatile ProductDetails.OneTimePurchaseOfferDetails fullGameOfferDetails;
+         // Coalesces concurrent queryProductDetails() calls (e.g. onBillingSetupFinished
+         // and onResume->ensureProductDetailsLoaded firing in quick succession) into a
+         // single in-flight async request. Without this we'd fire two parallel queries
+         // and process two duplicate callbacks.
+         private final AtomicBoolean productDetailsQueryInFlight = new AtomicBoolean(false);
          private static final String FULL_GAME_PRODUCT_ID = "com.cloudberrypine.polypine_full_game";
          // Tokens we've already started acknowledging — prevents duplicate
          // acknowledgePurchase() calls when both onPurchasesUpdated and
@@ -55,6 +65,62 @@ public class PolyPine extends SDLActivity
          // marked it as acknowledged (which would result in a "Server error,
          // please try again" log line on the second call).
          private final Set<String> acknowledgingTokens = ConcurrentHashMap.newKeySet();
+         // Retry plumbing for transient billing failures (e.g. cold Play Services
+         // after a phone reboot, network blips). enableAutoServiceReconnection()
+         // only handles disconnection of an already-connected service — it does
+         // not retry an initial setup failure or a queryProductDetails that
+         // returned non-OK / empty. Without these retries, the app stays in a
+         // "Product not found" state until next launch.
+         private final Handler retryHandler = new Handler(Looper.getMainLooper());
+         private static final long INITIAL_RETRY_DELAY_MS = 2000L;
+         private static final long MAX_RETRY_DELAY_MS = 60000L;
+         private volatile long setupRetryDelayMs = INITIAL_RETRY_DELAY_MS;
+         private volatile long productDetailsRetryDelayMs = INITIAL_RETRY_DELAY_MS;
+         private volatile boolean productDetailsRetryScheduled = false;
+         // Reference to the currently-scheduled setup retry (if any) so we can
+         // cancel it if setup succeeds via a different path before it fires —
+         // notably BillingClient's own internal retry (which we observe in
+         // practice even though enableAutoServiceReconnection() docs only mention
+         // disconnects). Without cancellation we get duplicate startConnection +
+         // setup-finished + queryProductDetails calls 2s apart.
+         private Runnable pendingSetupRetry = null;
+         private final BillingClientStateListener billingClientStateListener = new BillingClientStateListener() {
+             @Override
+             public void onBillingSetupFinished(@NonNull BillingResult billingResult) {
+                 // Cancel any pending retry — this callback is the authoritative
+                 // result of the most recent connection attempt (success or
+                 // failure). On failure we'll schedule a new retry below; on
+                 // success we just forget about the stale pending one.
+                 if (pendingSetupRetry != null) {
+                     retryHandler.removeCallbacks(pendingSetupRetry);
+                     pendingSetupRetry = null;
+                 }
+                 if (billingResult.getResponseCode() == BillingClient.BillingResponseCode.OK) {
+                     Log.d(TAG, "Billing client setup finished.");
+                     setupRetryDelayMs = INITIAL_RETRY_DELAY_MS; // reset backoff for next time
+                     queryProductDetails();
+                     queryPurchases();
+                 } else {
+                     final long delay = setupRetryDelayMs;
+                     Log.e(TAG, "Billing client setup failed with response code: " + billingResult.getResponseCode()
+                             + ". Retrying in " + delay + "ms.");
+                     setupRetryDelayMs = Math.min(delay * 2, MAX_RETRY_DELAY_MS);
+                     pendingSetupRetry = () -> {
+                         pendingSetupRetry = null;
+                         billingClient.startConnection(billingClientStateListener);
+                     };
+                     retryHandler.postDelayed(pendingSetupRetry, delay);
+                 }
+             }
+
+             @Override
+             public void onBillingServiceDisconnected() {
+                 // BillingClient was built with enableAutoServiceReconnection(); it
+                 // handles reconnection of a previously-connected service on its
+                 // own and re-fires onBillingSetupFinished on success.
+                 Log.d(TAG, "Billing service disconnected. Auto-reconnect will retry.");
+             }
+         };
 
          public BillingManager(Activity activity, Context context) {
              this.activity = activity;
@@ -71,32 +137,21 @@ public class PolyPine extends SDLActivity
          }
 
          void connectToGooglePlay() {
-             // The BillingClient was built with enableAutoServiceReconnection(), so it
-             // handles reconnection on its own. We don't queue manual retries here —
-             // doing so would race with the library's internal reconnect logic and
-             // cause "Billing client setup finished" to fire twice (and downstream
-             // queryPurchases() / handlePurchase() to run twice).
-             billingClient.startConnection(new BillingClientStateListener() {
-                 @Override
-                 public void onBillingSetupFinished(@NonNull BillingResult billingResult) {
-                     if (billingResult.getResponseCode() == BillingClient.BillingResponseCode.OK) {
-                         Log.d(TAG, "Billing client setup finished.");
-                         queryProductDetails();
-                         queryPurchases();
-                     } else {
-                         Log.e(TAG, "Billing client setup failed with response code: " + billingResult.getResponseCode()
-                                 + ". Auto-reconnect will retry.");
-                     }
-                 }
-
-                 @Override
-                 public void onBillingServiceDisconnected() {
-                     Log.d(TAG, "Billing service disconnected. Auto-reconnect will retry.");
-                 }
-             });
+             // billingClientStateListener handles success, retries on initial-setup
+             // failure (with exponential backoff), and relies on
+             // enableAutoServiceReconnection() for disconnects.
+             billingClient.startConnection(billingClientStateListener);
          }
 
          void queryProductDetails() {
+             // Coalesce concurrent callers — only one async query in flight at a time.
+             // Without this, onBillingSetupFinished and onResume->ensureProductDetailsLoaded
+             // racing each other produce two parallel queries and two duplicate
+             // "Received N one-time purchase offer(s)" callbacks.
+             if (!productDetailsQueryInFlight.compareAndSet(false, true)) {
+                 Log.d(TAG, "queryProductDetails skipped: query already in flight.");
+                 return;
+             }
              List<QueryProductDetailsParams.Product> productList = new ArrayList<>();
              productList.add(
                      QueryProductDetailsParams.Product.newBuilder()
@@ -111,8 +166,13 @@ public class PolyPine extends SDLActivity
              billingClient.queryProductDetailsAsync(params, new ProductDetailsResponseListener() {
                  @Override
                  public void onProductDetailsResponse(@NonNull BillingResult billingResult, @NonNull QueryProductDetailsResult productDetailsResult) {
+                     // Always release the in-flight flag, even on failure paths.
+                     productDetailsQueryInFlight.set(false);
                      List<ProductDetails> productDetailsList = productDetailsResult.getProductDetailsList();
-                     if (billingResult.getResponseCode() == BillingClient.BillingResponseCode.OK && !productDetailsList.isEmpty()) {
+                     boolean success = billingResult.getResponseCode() == BillingClient.BillingResponseCode.OK
+                             && !productDetailsList.isEmpty();
+                     if (success) {
+                         productDetailsRetryDelayMs = INITIAL_RETRY_DELAY_MS; // reset backoff on success
                          fullGameProductDetails = productDetailsList.get(0);
                          List<ProductDetails.OneTimePurchaseOfferDetails> offerDetailsList = fullGameProductDetails.getOneTimePurchaseOfferDetailsList();
                          if (offerDetailsList != null && !offerDetailsList.isEmpty()) {
@@ -130,12 +190,50 @@ public class PolyPine extends SDLActivity
                              Log.i(TAG, "Selected offer: priceMicros=" + fullGameOfferDetails.getPriceAmountMicros()
                                      + " token=" + fullGameOfferDetails.getOfferToken());
                              localizedFullGamePrice.set(fullGameOfferDetails.getFormattedPrice());
+                         } else {
+                             // Got OK + a product entry but no offers — treat as failure so
+                             // we retry; otherwise we'd permanently have product details
+                             // but no offer to launch the flow with.
+                             scheduleProductDetailsRetry("OK response but offer list empty");
                          }
                      } else {
-                         Log.e(TAG, "Failed to query product details with response code: " + billingResult.getResponseCode());
+                         scheduleProductDetailsRetry("response code=" + billingResult.getResponseCode()
+                                 + " productDetailsList.size=" + productDetailsList.size());
                      }
                  }
              });
+         }
+
+         private void scheduleProductDetailsRetry(String reasonForLog) {
+             // Coalesce concurrent failures so we only have one retry scheduled at a time.
+             if (productDetailsRetryScheduled) {
+                 return;
+             }
+             productDetailsRetryScheduled = true;
+             final long delay = productDetailsRetryDelayMs;
+             Log.e(TAG, "queryProductDetails failed (" + reasonForLog + "). Retrying in " + delay + "ms.");
+             productDetailsRetryDelayMs = Math.min(delay * 2, MAX_RETRY_DELAY_MS);
+             retryHandler.postDelayed(() -> {
+                 productDetailsRetryScheduled = false;
+                 if (fullGameProductDetails == null || fullGameOfferDetails == null) {
+                     queryProductDetails();
+                 }
+             }, delay);
+         }
+
+         /**
+          * Re-runs queryProductDetails() if details haven't loaded yet. Safe to call
+          * any number of times — does nothing if details are already populated.
+          * Intended for onResume() to recover from cases where the initial query
+          * happened during a Play Services warmup window and silently returned empty.
+          */
+         public void ensureProductDetailsLoaded() {
+             if (fullGameProductDetails == null || fullGameOfferDetails == null) {
+                 // Reset backoff so a fresh user-visible attempt isn't penalized by
+                 // the previous failure history.
+                 productDetailsRetryDelayMs = INITIAL_RETRY_DELAY_MS;
+                 queryProductDetails();
+             }
          }
 
          void queryPurchases() {
@@ -284,6 +382,9 @@ public class PolyPine extends SDLActivity
         super.onResume();
         if (billingManager != null) {
             billingManager.queryPurchases();
+            // Recover from cases where the initial product-details query landed
+            // during a Play Services warmup window and silently returned empty.
+            billingManager.ensureProductDetailsLoaded();
         }
     }
 
