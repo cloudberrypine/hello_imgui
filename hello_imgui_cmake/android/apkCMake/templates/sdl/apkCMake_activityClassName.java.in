@@ -411,6 +411,30 @@ public class PolyPine extends SDLActivity
     public String getFullGamePurchaseErrorMessage() {
         return billingManager.getFullGamePurchaseErrorMessage();
     }
+
+    /**
+     * Called from native code when the user presses the Android system back
+     * button on the root main menu. Per Google Play guidelines, this must
+     * either exit the app or prompt the user to confirm exit.
+     *
+     * Routed through runOnUiThread because the JNI call originates on SDL's
+     * main thread, not the Android UI thread, and finish() must run on the
+     * UI thread.
+     *
+     * We follow finish() with System.exit(0) because the hello_imgui runner
+     * is built with HELLOIMGUI_CANNOTQUIT on Android, meaning the SDL game
+     * loop on its own thread never returns. Without killing the process,
+     * the activity is destroyed but the wedged SDL thread keeps the process
+     * alive — and Android then reuses the half-dead process on next launch,
+     * leaving the user stuck on the splash screen with no logs.
+     */
+    public void exitApp() {
+        runOnUiThread(() -> {
+            finish();
+            System.exit(0);
+        });
+    }
+
     /**
      * This method is called by SDL before loading the native shared libraries.
      * It can be overridden to provide names of shared libraries to be loaded.
