@@ -475,13 +475,21 @@ function(_him_fetch_and_compile_plutovg_plutosvg)
     # (the stock CMakeLists of plutosvg is not compatible with a custom install of freetype)
     # with build options:
     #     PLUTOSVG_BUILD_STATIC
-    FetchContent_Populate(
-        plutosvg
-        GIT_REPOSITORY https://github.com/sammycage/plutosvg
-        GIT_TAG v0.0.6
-        SOURCE_DIR ${CMAKE_BINARY_DIR}/plutosvg_source
-        BINARY_DIR ${CMAKE_BINARY_DIR}/plutosvg_build
-    )
+    # Allow a parent project to provide an immutable shared source checkout.
+    # The legacy direct FetchContent_Populate() signature ignores the standard
+    # FETCHCONTENT_SOURCE_DIR_PLUTOSVG override.
+    if(FETCHCONTENT_SOURCE_DIR_PLUTOSVG)
+        set(plutosvg_SOURCE_DIR "${FETCHCONTENT_SOURCE_DIR_PLUTOSVG}")
+    else()
+        FetchContent_Populate(
+            plutosvg
+            GIT_REPOSITORY https://github.com/sammycage/plutosvg
+            GIT_TAG v0.0.6
+            GIT_SUBMODULES ""
+            SOURCE_DIR ${CMAKE_BINARY_DIR}/plutosvg_source
+            BINARY_DIR ${CMAKE_BINARY_DIR}/plutosvg_build
+        )
+    endif()
     add_library(plutosvg STATIC ${plutosvg_SOURCE_DIR}/source/plutosvg.c)
     target_include_directories(plutosvg PUBLIC $<BUILD_INTERFACE:${plutosvg_SOURCE_DIR}/source>)
     target_compile_definitions(plutosvg PUBLIC PLUTOSVG_HAS_FREETYPE PLUTOSVG_BUILD_STATIC)

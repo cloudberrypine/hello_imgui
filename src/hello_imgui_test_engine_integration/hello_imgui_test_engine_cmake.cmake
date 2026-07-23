@@ -24,7 +24,10 @@ function(_fetch_imgui_test_engine_if_needed)
             GIT_TAG imgui_bundle
         )
         FetchContent_MakeAvailable(imgui_test_engine)
-        set(HELLOIMGUI_IMGUI_TEST_ENGINE_SOURCE_DIR ${CMAKE_BINARY_DIR}/_deps/imgui_test_engine-src CACHE STRING "" FORCE)
+        # FetchContent may have been given a shared source override by the
+        # parent project. Use the source directory it actually selected rather
+        # than assuming the default per-build _deps location.
+        set(HELLOIMGUI_IMGUI_TEST_ENGINE_SOURCE_DIR ${imgui_test_engine_SOURCE_DIR} CACHE STRING "" FORCE)
     endif()
 endfunction()
 

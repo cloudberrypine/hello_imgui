@@ -11,12 +11,13 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
 endif()
 
 find_program(CCACHE ccache)
-if(CCACHE)
-  message("using ccache")
+if(CMAKE_CXX_COMPILER_LAUNCHER)
+  message(STATUS "Using parent C++ compiler launcher: ${CMAKE_CXX_COMPILER_LAUNCHER}")
+elseif(CCACHE)
+  message(STATUS "Using ccache: ${CCACHE}")
   set(CMAKE_CXX_COMPILER_LAUNCHER ${CCACHE})
 endif()
 
 # Generate compile_commands.json to make it easier to work with clang based
 # tools
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-
