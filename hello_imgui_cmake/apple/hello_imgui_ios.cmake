@@ -28,6 +28,19 @@ endfunction()
 
 # Handle icons (and conversion if necessary)
 function(hello_imgui_ios_add_icons app_name assets_location)
+    # Prefer a complete app icon set supplied in the custom iOS asset catalog.
+    # The catalog is already added by hello_imgui_ios_copy_resources(), so do
+    # not generate and add a second set of loose icon files.
+    set(custom_app_icon_set
+        ${assets_location}/app_settings/apple/Resources/ios/Assets.xcassets/AppIcon.appiconset)
+    if (EXISTS ${custom_app_icon_set}/Contents.json)
+        message(STATUS "hello_imgui_ios_add_icons: using AppIcon from ${custom_app_icon_set} for app ${app_name}")
+        set_target_properties(${app_name} PROPERTIES
+            XCODE_ATTRIBUTE_ASSETCATALOG_COMPILER_APPICON_NAME "AppIcon"
+        )
+        return()
+    endif()
+
     # Default HelloImGui icons
     set(icons_assets_folder ${HELLOIMGUI_BASEPATH}/hello_imgui_cmake/apple/ios_icons)
     set(found_custom_icon OFF)
@@ -85,6 +98,6 @@ function(hello_imgui_ios_copy_resources app_name assets_location)
     set(custom_resources_folder ${assets_location}/app_settings/apple/Resources/ios)
     if (EXISTS ${custom_resources_folder})
         message(STATUS "hello_imgui_ios_copy_resources: found custom iOS resources folder ${custom_resources_folder} for app ${app_name} ")
-        hello_imgui_apple_bundle_add_files_from_folder_non_recursive(${app_name} ${custom_resources_folder} "Resources")
+        hello_imgui_apple_bundle_add_resources_from_folder_non_recursive(${app_name} ${custom_resources_folder})
     endif()
 endfunction()
