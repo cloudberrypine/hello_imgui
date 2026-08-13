@@ -10,19 +10,24 @@ else {
 android {
     if (buildAsApplication) {
         // namespace "org.libsdl.app"
-        namespace "@apkCMake_applicationIdUrlPart@.@apkCMake_applicationIdNamePart@"
+        namespace = "@apkCMake_applicationIdUrlPart@.@apkCMake_applicationIdNamePart@"
     }
 
-    compileSdkVersion 35
-    ndkVersion '28.2.13676358'
+    compileSdk {
+        version = release(@apkCMake_compileSdkVersion@) {
+            minorApiLevel = @apkCMake_compileSdkMinorVersion@
+        }
+    }
+    buildToolsVersion = '@apkCMake_buildToolsVersion@'
+    ndkVersion = '@apkCMake_ndkVersion@'
 
 
     defaultConfig {
-        minSdkVersion 23
-        targetSdkVersion 35
+        minSdk = @apkCMake_minSdkVersion@
+        targetSdk = @apkCMake_targetSdkVersion@
 
-        versionCode @apkCMake_versionCode@
-        versionName "@apkCMake_versionName@"
+        versionCode = @apkCMake_versionCode@
+        versionName = "@apkCMake_versionName@"
 
         externalNativeBuild {
             //ndkBuild {
@@ -43,14 +48,16 @@ android {
     }
     buildTypes {
         release {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
-            signingConfig signingConfigs.debug
+            minifyEnabled = false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig = signingConfigs.debug
         }
     }
-    applicationVariants.all { variant ->
-        tasks["merge${variant.name.capitalize()}Assets"]
-            .dependsOn("externalNativeBuild${variant.name.capitalize()}")
+    tasks.configureEach { task ->
+        if (task.name.startsWith('merge') && task.name.endsWith('Assets')) {
+            def variantName = task.name.substring(5, task.name.length() - 6)
+            task.dependsOn("externalNativeBuild${variantName}")
+        }
     }
     if (!project.hasProperty('EXCLUDE_NATIVE_LIBS')) {
         sourceSets.main {
@@ -61,13 +68,14 @@ android {
             //    path 'jni/Android.mk'
             //}
             cmake {
-                path 'jni/CMakeLists.txt'
+                path = file('jni/CMakeLists.txt')
+                version = '@apkCMake_cmakeVersion@'
             }
         }
        
     }
     lint {
-        abortOnError false
+        abortOnError = false
     }
     
     if (buildAsLibrary) {

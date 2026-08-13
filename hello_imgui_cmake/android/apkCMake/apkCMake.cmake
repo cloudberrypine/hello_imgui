@@ -51,6 +51,21 @@ macro(apkCMake_fillAndroidWantedVersions)
     endif()
     apkCMake_logVar(apkCMake_compileSdkVersion)
 
+    if (NOT DEFINED apkCMake_compileSdkMinorVersion)
+        set(apkCMake_compileSdkMinorVersion 0)
+    endif()
+    apkCMake_logVar(apkCMake_compileSdkMinorVersion)
+
+    if (NOT DEFINED apkCMake_buildToolsVersion)
+        set(apkCMake_buildToolsVersion 36.0.0)
+    endif()
+    apkCMake_logVar(apkCMake_buildToolsVersion)
+
+    if (NOT DEFINED apkCMake_cmakeVersion)
+        set(apkCMake_cmakeVersion 3.22.1)
+    endif()
+    apkCMake_logVar(apkCMake_cmakeVersion)
+
     if (NOT DEFINED apkCMake_minSdkVersion)
         set(apkCMake_minSdkVersion 23)
     endif()
@@ -193,6 +208,23 @@ function(apkCMake_addAppSettingsAndroidFolder assets_location)
     if (IS_DIRECTORY ${local_settings_location})
         message(VERBOSE "apkCMake_addAppSettingsAndroidFolder: ${app_name} found local settings in ${local_settings_location}")
         set(settingsOutputFolder ${apkCMake_outputProjectFolder}/app/src/main/)
+
+        # Android identifies resources by directory and basename, regardless
+        # of file extension. Remove a template resource before copying a local
+        # PNG/WebP/XML override with the same resource name.
+        if (IS_DIRECTORY ${local_settings_location}/res)
+            file(GLOB_RECURSE local_resource_files
+                    RELATIVE ${local_settings_location}/res
+                    ${local_settings_location}/res/*)
+            foreach(local_resource ${local_resource_files})
+                get_filename_component(resource_dir ${local_resource} DIRECTORY)
+                get_filename_component(resource_name ${local_resource} NAME_WE)
+                file(GLOB template_resources_to_replace
+                        ${settingsOutputFolder}/res/${resource_dir}/${resource_name}.*)
+                file(REMOVE ${template_resources_to_replace})
+            endforeach()
+        endif()
+
         apkCMake_copyDirectoryContent(${local_settings_location} ${settingsOutputFolder})
     endif()
 endfunction()
@@ -217,6 +249,7 @@ endfunction()
 function(apkCMake_makeAndroidStudioProject appTargetToEmbed assets_location)
     message(VERBOSE "apkCMake_makeAndroidStudioProject ${appTargetToEmbed}")
     apkCMake_fillVariables(${appTargetToEmbed})
+    file(REMOVE_RECURSE ${apkCMake_outputProjectFolder})
     apkCMake_copyAndConfigureDirectoryContent(${apkCMake_projectTemplateFolder}/gradle_template ${apkCMake_outputProjectFolder})
     apkCmake_processActivityClass()
     apkCMake_makeSymLinks()
