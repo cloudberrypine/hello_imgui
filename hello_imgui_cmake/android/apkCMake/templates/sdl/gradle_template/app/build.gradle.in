@@ -1,5 +1,10 @@
 def buildAsLibrary = project.hasProperty('BUILD_AS_LIBRARY');
 def buildAsApplication = !buildAsLibrary
+def releaseKeystorePath = System.getenv('POLYPINE_ANDROID_KEYSTORE')
+def releaseKeyAlias = System.getenv('POLYPINE_ANDROID_KEY_ALIAS')
+def releaseStorePassword = System.getenv('POLYPINE_ANDROID_STORE_PASSWORD')
+def releaseKeyPassword = System.getenv('POLYPINE_ANDROID_KEY_PASSWORD')
+def hasReleaseSigning = releaseKeystorePath && releaseKeyAlias && releaseStorePassword && releaseKeyPassword
 if (buildAsApplication) {
     apply plugin: 'com.android.application'
 }
@@ -8,6 +13,17 @@ else {
 }
 
 android {
+    if (hasReleaseSigning) {
+        signingConfigs {
+            release {
+                storeFile = file(releaseKeystorePath)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
+    }
+
     if (buildAsApplication) {
         // namespace "org.libsdl.app"
         namespace = "@apkCMake_applicationIdUrlPart@.@apkCMake_applicationIdNamePart@"
@@ -50,7 +66,12 @@ android {
         release {
             minifyEnabled = false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            signingConfig = signingConfigs.debug
+            ndk {
+                debugSymbolLevel = 'FULL'
+            }
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.release
+            }
         }
     }
     tasks.configureEach { task ->
