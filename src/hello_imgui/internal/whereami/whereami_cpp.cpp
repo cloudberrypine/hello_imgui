@@ -3,26 +3,33 @@
 #include "hello_imgui/internal/whereami/whereami.h"
 #include "hello_imgui/internal/whereami/whereami_cpp.h"
 
+namespace
+{
+    // whereami returns -1 when it cannot tell the path: on macOS when the
+    // executable's file is gone (deleted or moved while it runs), as
+    // realpath fails. The path is empty then; writing path[length] with a
+    // length of -1 wrote a zero byte before the allocation, into whatever
+    // the heap kept there, on every call.
+    std::string pathString(int (*getPath)(char* out, int capacity, int* dirname_length))
+    {
+        int length = getPath(NULL, 0, NULL);
+        if (length <= 0)
+            return std::string();
+        std::string result((size_t)length, '\0');
+        if (getPath(&result[0], length, NULL) != length)
+            return std::string();
+        return result;
+    }
+}
+
 std::string wai_getExecutablePath_string()
 {
-    int length = wai_getExecutablePath(NULL, 0, NULL);
-    char* path = (char*)malloc(length + 1);
-    wai_getExecutablePath(path, length, NULL);
-    path[length] = '\0';
-    std::string result(path);
-    free(path);
-    return result;
+    return pathString(wai_getExecutablePath);
 }
 
 std::string wai_getModulePath_string()
 {
-    int length = wai_getModulePath(NULL, 0, NULL);
-    char* path = (char*)malloc(length + 1);
-    wai_getModulePath(path, length, NULL);
-    path[length] = '\0';
-    std::string result(path);
-    free(path);
-    return result;
+    return pathString(wai_getModulePath);
 }
 
 namespace
